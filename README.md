@@ -1,4 +1,4 @@
-# 🎙️ Paper Biceps — AI-Powered Podcast Generator
+# 🎙️ PaperBiceps — AI-Powered Podcaster
 
 **Paper Biceps** is an AI tool that transforms any written content — research papers, articles, blogs, or documents — into realistic podcast conversations. It uses LLMs and TTS to simulate an actual podcast episode between a host and an expert.
 
