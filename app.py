@@ -3,12 +3,22 @@ import requests
 import os
 from urllib.parse import urlparse
 
-st.set_page_config(page_title="The PaperBiceps Show", page_icon="🎙️")
+st.set_page_config(
+    page_title="The PaperBiceps Show",
+    page_icon="paperbiceps_logo.jpg",  
+    layout="centered"
+)
+
+# Display logo next to the title
+col1, col2 = st.columns([1, 8])
+with col1:
+    st.image("paperbiceps_logo.jpg", width=40)
+with col2:
+    st.title("The PaperBiceps Show Podcast ")
 
 st.title("The PaperBiceps Show Podcast ")
 st.markdown("Upload a file or enter a URL to generate a podcast")
 
-# Input section
 input_option = st.radio("Choose input method:", ("Upload File", "Enter URL"))
 file = None
 url = None
@@ -33,9 +43,9 @@ if st.button("🎙️ Generate Podcast"):
                     files = None
                     data = {"url": url}
 
-                # Make request to FastAPI backend
+                
                 response = requests.post(
-                    "http://localhost:8000/generate-podcast/",
+                    "http://localhost:8000/generate-podcast/", #requesting the fastapi backend
                     files=files,
                     data=data
                 )

@@ -21,38 +21,36 @@ async def generate_podcast(file: UploadFile = File(None), url: str = Form(None))
         raise HTTPException(status_code=400, detail="Please provide either a file or a URL")
 
     try:
-        # Step 1: Extract text
+        
         if file:
             file_extension = os.path.splitext(file.filename)[1].lower()
             temp_file = f"temp_{uuid.uuid4().hex}{file_extension}"
-            with open(temp_file, "wb") as f:
+            with open(temp_file, "wb") as f:   
                 f.write(await file.read())
-            raw_text = extract_text(temp_file)
+            raw_text = extract_text(temp_file)   #extracting text
             os.remove(temp_file)
         else:
             raw_text = extract_text(url)
 
-        # Step 2: Clean text
-        cleaned_text = clean_text(raw_text)
+        cleaned_text = clean_text(raw_text) #cleaned the text
 
-        # Step 3: Generate podcast script
         model = gemini_setup(GEMINI_API_KEY)
         podcast_script = generate_podcast_script(model, cleaned_text)
 
-        # Step 4: Save script to temporary file
-        script_path = f"temp_script_{uuid.uuid4().hex}.txt"
+
+        script_path = f"temp_script_{uuid.uuid4().hex}.txt" #saving tp temporary files
         cleaned_script = podcast_script.replace("**Sky:**", "Sky:").replace("**Expert:**", "Expert:")
         with open(script_path, "w", encoding="utf-8") as f:
             f.write(cleaned_script)
 
-        # Step 5: Generate audio
+        # generating audio
         output_audio = f"temp_audio_{uuid.uuid4().hex}.mp3"
-        await generate_audio(script_path, output_audio)
+        await generate_audio(script_path, output_audio) #running the audio generation
 
         # Clean up script file
         os.remove(script_path)
 
-        # Return the audio file
+        
         return FileResponse(
             output_audio,
             media_type="audio/mpeg",
