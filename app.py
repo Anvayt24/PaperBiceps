@@ -5,18 +5,15 @@ from urllib.parse import urlparse
 
 st.set_page_config(
     page_title="The PaperBiceps Show",
-    page_icon="paperbiceps_logo.jpg",  
-    layout="centered"
+    page_icon="🎙️",
 )
 
-# Display logo next to the title
-col1, col2 = st.columns([1, 8])
-with col1:
-    st.image("paperbiceps_logo.jpg", width=40)
-with col2:
-    st.title("The PaperBiceps Show Podcast ")
+from PIL import Image
 
-st.title("The PaperBiceps Show Podcast ")
+logo = Image.open("paperbiceps_logo.jpg")
+st.columns([0.15, 0.85])[0].image(logo, width=300)
+st.markdown("<h1 style='display:inline-block; vertical-align:centered;'>Paper Biceps Podcast Generator</h1>", unsafe_allow_html=True)
+
 st.markdown("Upload a file or enter a URL to generate a podcast")
 
 input_option = st.radio("Choose input method:", ("Upload File", "Enter URL"))
