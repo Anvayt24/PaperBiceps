@@ -3,7 +3,7 @@
 **Paper Biceps** is an AI tool that transforms any written content — research papers, articles, blogs, or documents — into realistic podcast conversations. It uses LLMs and TTS to simulate an actual podcast episode between a host and an expert.
 
 # Listen to sample podcast 
-audio.mp3 
+https://github.com/Anvayt24/PaperBiceps/blob/main/audio.mp3
 
 ---
 
