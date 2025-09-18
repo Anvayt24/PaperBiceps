@@ -1,0 +1,74 @@
+/* PaperBiceps Chrome Extension Content Styles */
+
+.paperbiceps-floating-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  border: none;
+  color: white;
+  user-select: none;
+}
+
+.paperbiceps-floating-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.paperbiceps-floating-btn:active {
+  transform: scale(0.95);
+}
+
+.paperbiceps-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10001;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease-out;
+}
+
+.paperbiceps-notification-success {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.paperbiceps-notification-error {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.paperbiceps-notification-info {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Hide button on certain pages */
+.paperbiceps-floating-btn.hidden {
+  display: none !important;
+}
