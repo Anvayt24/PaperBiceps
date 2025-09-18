@@ -20,7 +20,7 @@ class DeepgramService:
             "Content-Type": "application/json"
         }
     
-    async def generate_audio(self, text: str, model: str = "aura-2-thalia-en") -> str:
+    async def generate_audio(self, text: str, model: str = "aura-2-thalia-en", client: Optional[httpx.AsyncClient] = None) -> str:
         if not text.strip():
             raise HTTPException(
                 status_code=400, 
@@ -28,7 +28,15 @@ class DeepgramService:
             )
         payload = {"text": text}
         try:
-            async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as client:
+            # Use provided client to enable connection reuse; otherwise create a one-off client
+            if client is None:
+                async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as temp_client:
+                    response = await temp_client.post(
+                        f"{self.TTS_URL}?model={model}",
+                        headers=self._get_headers(),
+                        json=payload
+                    )
+            else:
                 response = await client.post(
                     f"{self.TTS_URL}?model={model}",
                     headers=self._get_headers(),
@@ -94,27 +102,29 @@ class DeepgramService:
             )
         audio_segments = []
         temp_files = []
-        for line_num, line in enumerate(lines, 1):
-            dialogue = self._parse_dialogue_line(line)
-            if not dialogue:
-                continue
-            speaker, text = dialogue
-            voice_model = settings.SPEAKER_VOICES[speaker]
-            try:
-                audio_file = await self.generate_audio(text, voice_model)
-                temp_files.append(audio_file)
-                segment = AudioSegment.from_mp3(audio_file)
-                audio_segments.append(segment)
-                if line_num < len(lines):
-                    pause = AudioSegment.silent(duration=1000)
-                    audio_segments.append(pause)
-            except Exception as e:
-                for temp_file in temp_files:
-                    cleanup_file(temp_file)
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Error generating audio for line {line_num}: {str(e)}"
-                )
+        # Reuse a single HTTP client for all TTS calls to leverage keep-alive
+        async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as client:
+            for line_num, line in enumerate(lines, 1):
+                dialogue = self._parse_dialogue_line(line)
+                if not dialogue:
+                    continue
+                speaker, text = dialogue
+                voice_model = settings.SPEAKER_VOICES[speaker]
+                try:
+                    audio_file = await self.generate_audio(text, voice_model, client=client)
+                    temp_files.append(audio_file)
+                    segment = AudioSegment.from_mp3(audio_file)
+                    audio_segments.append(segment)
+                    if line_num < len(lines):
+                        pause = AudioSegment.silent(duration=1000)
+                        audio_segments.append(pause)
+                except Exception as e:
+                    for temp_file in temp_files:
+                        cleanup_file(temp_file)
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error generating audio for line {line_num}: {str(e)}"
+                    )
         if not audio_segments:
             raise HTTPException(
                 status_code=400,
