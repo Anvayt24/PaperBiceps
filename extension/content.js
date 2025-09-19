@@ -1,4 +1,5 @@
 // Content script for PaperBiceps Chrome Extension
+console.log('[PaperBiceps] Content script loaded on:', window.location.href);
 let floatingButton = null;
 let isButtonVisible = false;
 
@@ -17,8 +18,12 @@ function base64ToBlob(base64Data, mimeType) {
 
 // Create floating microphone button
 function createFloatingButton() {
-  if (floatingButton) return;
+  if (floatingButton) {
+    console.log('[PaperBiceps] Button already exists, skipping creation');
+    return;
+  }
   
+  console.log('[PaperBiceps] Creating floating button...');
   floatingButton = document.createElement('div');
   floatingButton.id = 'paperbiceps-floating-button';
   floatingButton.innerHTML = '🎙';
@@ -53,25 +58,41 @@ function createFloatingButton() {
   // Add click event
   floatingButton.addEventListener('click', handleFloatingButtonClick);
   
+  // Add additional event listeners for debugging
+  floatingButton.addEventListener('mousedown', () => {
+    console.log('[PaperBiceps] Button mousedown detected');
+  });
+  
+  floatingButton.addEventListener('mouseup', () => {
+    console.log('[PaperBiceps] Button mouseup detected');
+  });
+  
   document.body.appendChild(floatingButton);
   isButtonVisible = true;
+  
+  console.log('[PaperBiceps] Floating button created and added to page');
+  console.log('[PaperBiceps] Button element:', floatingButton);
+  console.log('[PaperBiceps] Button computed styles:', window.getComputedStyle(floatingButton));
 }
 
 // Handle floating button click
 async function handleFloatingButtonClick() {
+  console.log('[PaperBiceps] Floating button clicked!');
   try {
     // Show loading state
     floatingButton.innerHTML = '⏳';
     floatingButton.style.opacity = '0.7';
     
+    console.log('[PaperBiceps] Sending message to background script...');
     // Send message to background script
     chrome.runtime.sendMessage({
       action: 'generatePodcast',
       url: window.location.href
     }, (response) => {
+      console.log('[PaperBiceps] Received response from background:', response);
       // Handle service worker unreachable or other runtime errors
       if (chrome.runtime && chrome.runtime.lastError) {
-        console.error('Runtime error:', chrome.runtime.lastError.message);
+        console.error('[PaperBiceps] Runtime error:', chrome.runtime.lastError.message);
         showNotification('Extension background not responding. Please reload the extension.', 'error');
         // Reset button
         floatingButton.innerHTML = '🎙';
@@ -79,9 +100,11 @@ async function handleFloatingButtonClick() {
         return;
       }
       if (response && response.success) {
+        console.log('[PaperBiceps] Podcast generated successfully');
         playAudio(response.audioData, response.mimeType);
         showNotification('Podcast generated successfully!', 'success');
       } else {
+        console.error('[PaperBiceps] Failed to generate podcast:', response?.error);
         showNotification('Failed to generate podcast. Please try again.', 'error');
       }
       
@@ -167,11 +190,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Initialize floating button on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', createFloatingButton);
-} else {
+function initializeButton() {
+  console.log('[PaperBiceps] Initializing button, document.readyState:', document.readyState);
+  
+  // Ensure document.body exists before creating button
+  if (!document.body) {
+    console.log('[PaperBiceps] document.body not ready, waiting...');
+    setTimeout(initializeButton, 100);
+    return;
+  }
+  
   createFloatingButton();
 }
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeButton);
+} else {
+  initializeButton();
+}
+
+// Also try to create button after a short delay as fallback
+setTimeout(() => {
+  if (!floatingButton) {
+    console.log('[PaperBiceps] Fallback: Creating button after delay');
+    initializeButton();
+  }
+}, 1000);
 
 // Re-create button if page content changes (for SPAs)
 const observer = new MutationObserver((mutations) => {
@@ -186,3 +230,43 @@ observer.observe(document.body, {
   childList: true,
   subtree: true
 });
+
+// Add global debug functions for manual testing
+window.PaperBicepsDebug = {
+  checkButton: () => {
+    const button = document.getElementById('paperbiceps-floating-button');
+    console.log('[PaperBiceps Debug] Button element:', button);
+    if (button) {
+      console.log('[PaperBiceps Debug] Button styles:', window.getComputedStyle(button));
+      console.log('[PaperBiceps Debug] Button position:', button.getBoundingClientRect());
+    }
+    return button;
+  },
+  createButton: () => {
+    console.log('[PaperBiceps Debug] Manually creating button...');
+    createFloatingButton();
+  },
+  testClick: () => {
+    console.log('[PaperBiceps Debug] Testing button click...');
+    const button = document.getElementById('paperbiceps-floating-button');
+    if (button) {
+      button.click();
+    } else {
+      console.log('[PaperBiceps Debug] No button found to click');
+    }
+  },
+  testMessage: () => {
+    console.log('[PaperBiceps Debug] Testing background message...');
+    chrome.runtime.sendMessage({
+      action: 'generatePodcast',
+      url: window.location.href
+    }, (response) => {
+      console.log('[PaperBiceps Debug] Response:', response);
+      if (chrome.runtime.lastError) {
+        console.error('[PaperBiceps Debug] Runtime error:', chrome.runtime.lastError);
+      }
+    });
+  }
+};
+
+console.log('[PaperBiceps] Debug functions available at window.PaperBicepsDebug');
