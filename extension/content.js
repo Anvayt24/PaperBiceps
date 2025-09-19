@@ -23,6 +23,32 @@ function createFloatingButton() {
   floatingButton.id = 'paperbiceps-floating-button';
   floatingButton.innerHTML = '🎙';
   floatingButton.className = 'paperbiceps-floating-btn';
+  // Add inline styles to ensure visibility even if CSS fails or is overridden by the page
+  try {
+    floatingButton.style.position = 'fixed';
+    floatingButton.style.bottom = '20px';
+    floatingButton.style.right = '20px';
+    floatingButton.style.width = '60px';
+    floatingButton.style.height = '60px';
+    floatingButton.style.borderRadius = '50%';
+    floatingButton.style.display = 'flex';
+    floatingButton.style.alignItems = 'center';
+    floatingButton.style.justifyContent = 'center';
+    floatingButton.style.fontSize = '24px';
+    floatingButton.style.cursor = 'pointer';
+    floatingButton.style.userSelect = 'none';
+    // Use a very high z-index to sit above most site overlays
+    floatingButton.style.zIndex = '2147483647';
+    floatingButton.style.color = '#ffffff';
+    floatingButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    floatingButton.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+  } catch (e) {
+    // Non-fatal; styling best-effort
+    console.warn('Unable to apply inline styles to floating button:', e);
+  }
+  // Accessibility improvements
+  floatingButton.setAttribute('role', 'button');
+  floatingButton.setAttribute('aria-label', 'Generate podcast with PaperBiceps');
   
   // Add click event
   floatingButton.addEventListener('click', handleFloatingButtonClick);
@@ -43,6 +69,15 @@ async function handleFloatingButtonClick() {
       action: 'generatePodcast',
       url: window.location.href
     }, (response) => {
+      // Handle service worker unreachable or other runtime errors
+      if (chrome.runtime && chrome.runtime.lastError) {
+        console.error('Runtime error:', chrome.runtime.lastError.message);
+        showNotification('Extension background not responding. Please reload the extension.', 'error');
+        // Reset button
+        floatingButton.innerHTML = '🎙';
+        floatingButton.style.opacity = '1';
+        return;
+      }
       if (response && response.success) {
         playAudio(response.audioData, response.mimeType);
         showNotification('Podcast generated successfully!', 'success');
