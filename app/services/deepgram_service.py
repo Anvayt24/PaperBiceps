@@ -7,7 +7,7 @@ from app.utils.file_utils import generate_temp_filename, cleanup_file
 
 
 class DeepgramService:
-    TTS_URL = "https://api.deepgram.com/v1/speak"
+    TTS_URL = "https://api.deepgram.com/v1/speak/stream"
     
     def _get_headers(self) -> dict[str, str]:
         if not settings.is_deepgram_configured:
@@ -17,7 +17,8 @@ class DeepgramService:
             )
         return {
             "Authorization": f"Token {settings.DEEPGRAM_API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
         }
     
     async def generate_audio(self, text: str, model: str = "aura-2-thalia-en", client: Optional[httpx.AsyncClient] = None) -> str:
@@ -27,31 +28,48 @@ class DeepgramService:
                 detail="Text cannot be empty"
             )
         payload = {"text": text}
+        url = f"{self.TTS_URL}?model={model}"
         try:
             # Use provided client to enable connection reuse; otherwise create a one-off client
             if client is None:
                 async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT) as temp_client:
-                    response = await temp_client.post(
-                        f"{self.TTS_URL}?model={model}",
-                        headers=self._get_headers(),
-                        json=payload
-                    )
+                    async with temp_client.stream("POST", url, headers=self._get_headers(), json=payload) as response:
+                        if response.status_code != 200:
+                            err_bytes = await response.aread()
+                            err_text = err_bytes.decode("utf-8", errors="replace") if isinstance(err_bytes, (bytes, bytearray)) else str(err_bytes)
+                            raise HTTPException(
+                                status_code=response.status_code,
+                                detail=f"Deepgram API error: {err_text[:200]}"
+                            )
+                        audio_file = generate_temp_filename("deepgram_audio", "mp3")
+                        try:
+                            with open(audio_file, "wb") as f:
+                                async for chunk in response.aiter_bytes():
+                                    if chunk:
+                                        f.write(chunk)
+                            return audio_file
+                        except Exception:
+                            cleanup_file(audio_file)
+                            raise
             else:
-                response = await client.post(
-                    f"{self.TTS_URL}?model={model}",
-                    headers=self._get_headers(),
-                    json=payload
-                )
-            if response.status_code == 200:
-                audio_file = generate_temp_filename("deepgram_audio", "mp3")
-                with open(audio_file, "wb") as f:
-                    f.write(response.content)
-                return audio_file
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Deepgram API error: {response.text[:200]}"
-                )
+                async with client.stream("POST", url, headers=self._get_headers(), json=payload) as response:
+                    if response.status_code != 200:
+                        err_bytes = await response.aread()
+                        err_text = err_bytes.decode("utf-8", errors="replace") if isinstance(err_bytes, (bytes, bytearray)) else str(err_bytes)
+                        raise HTTPException(
+                            status_code=response.status_code,
+                            detail=f"Deepgram API error: {err_text[:200]}"
+                        )
+                    audio_file = generate_temp_filename("deepgram_audio", "mp3")
+                    try:
+                        with open(audio_file, "wb") as f:
+                            async for chunk in response.aiter_bytes():
+                                if chunk:
+                                    f.write(chunk)
+                        return audio_file
+                    except Exception:
+                        cleanup_file(audio_file)
+                        raise
         except httpx.TimeoutException as e:
             # Gateway Timeout when Deepgram does not respond in time
             raise HTTPException(
